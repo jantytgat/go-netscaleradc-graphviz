@@ -10,14 +10,14 @@ import (
 func Generate(ctx context.Context, c Config, client *nitro.Client) (*Graph, error) {
 	var err error
 	var g = &Graph{}
-	if g.lbVservers, err = generateLbVserverGraph(ctx, c, client); err != nil {
+	if g.LbVservers, err = generateLbVserverGraph(ctx, c, client); err != nil {
 		return nil, err
 	}
 	return g, nil
 }
 
 type Graph struct {
-	lbVservers map[string]LbVserver
+	LbVservers map[string]LbVserver
 }
 
 func generateLbVserverGraph(ctx context.Context, c Config, client *nitro.Client) (map[string]LbVserver, error) {

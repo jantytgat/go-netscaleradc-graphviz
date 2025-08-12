@@ -99,6 +99,9 @@ func main() {
 		panic(err)
 	}
 	fmt.Println(graph)
+	for _, lb := range graph.LbVservers {
+		lb.Print()
+	}
 	fmt.Println("Done.")
 	os.Exit(0)
 }
