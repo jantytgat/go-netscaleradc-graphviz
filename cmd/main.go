@@ -35,13 +35,13 @@ func main() {
 		switch values[0] {
 		case "NITRO_ENV_NAME":
 			NITRO_ENV_NAME = values[1]
-			fmt.Println("NITRO_ENV_NAME:", NITRO_ENV_NAME)
+			// fmt.Println("NITRO_ENV_NAME:", NITRO_ENV_NAME)
 		case "NITRO_ENV_ADDRESS":
 			NITRO_ENV_ADDRESS = values[1]
-			fmt.Println("NITRO_ENV_ADDRESS:", NITRO_ENV_ADDRESS)
+			// fmt.Println("NITRO_ENV_ADDRESS:", NITRO_ENV_ADDRESS)
 		case "NITRO_ENV_USERNAME":
 			NITRO_ENV_USERNAME = values[1]
-			fmt.Println("NITRO_ENV_USERNAME:", NITRO_ENV_USERNAME)
+			// fmt.Println("NITRO_ENV_USERNAME:", NITRO_ENV_USERNAME)
 		case "NITRO_ENV_PASSWORD":
 			NITRO_ENV_PASSWORD = values[1]
 			if NITRO_ENV_PASSWORD == "" {
@@ -82,7 +82,7 @@ func main() {
 		}
 	}()
 
-	fmt.Println(client.BaseUrl())
+	// fmt.Println(client.BaseUrl())
 	ctx := context.Background()
 
 	var conf = adcviz.Config{
@@ -90,7 +90,10 @@ func main() {
 			config.LbVserverFieldNames.Name,
 			config.LbVserverFieldNames.Ipv46,
 			config.LbVserverFieldNames.Port,
-			config.LbVserverFieldNames.Type,
+			config.LbVserverFieldNames.ServiceType,
+			config.LbVserverFieldNames.ListenPolicy,
+			config.LbVserverFieldNames.ListenPriority,
+			config.LbVserverFieldNames.LbMethod,
 		},
 	}
 
@@ -98,10 +101,20 @@ func main() {
 	if graph, err = adcviz.Generate(ctx, conf, client); err != nil {
 		panic(err)
 	}
-	fmt.Println(graph)
+
 	for _, lb := range graph.LbVservers {
-		lb.Print()
+		if err = lb.SaveAsPng(lb.Name + ".png"); err != nil {
+			panic(err)
+		}
+		fmt.Println(lb.String())
+		break
 	}
+	// time.Sleep(1 * time.Second)
+	// var json string
+	// if json, err = graph.ToJson(); err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(json)
 	fmt.Println("Done.")
 	os.Exit(0)
 }
