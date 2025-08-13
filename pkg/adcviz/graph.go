@@ -2,6 +2,7 @@ package adcviz
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/jantytgat/go-netscaleradc-nitro/pkg/nitro"
 	"github.com/jantytgat/go-netscaleradc-nitro/pkg/nitro/resource/config"
@@ -20,6 +21,15 @@ type Graph struct {
 	LbVservers map[string]LbVserver
 }
 
+func (g Graph) ToJson() (string, error) {
+	var err error
+	var jsonBytes []byte
+	if jsonBytes, err = json.MarshalIndent(g, "", "  "); err != nil {
+		return "", err
+	}
+	return string(jsonBytes), nil
+}
+
 func generateLbVserverGraph(ctx context.Context, c Config, client *nitro.Client) (map[string]LbVserver, error) {
 	var err error
 	var vservers []config.LbVserver
@@ -31,10 +41,13 @@ func generateLbVserverGraph(ctx context.Context, c Config, client *nitro.Client)
 	var lbVservers = make(map[string]LbVserver, len(vservers))
 	for _, vserver := range vservers {
 		lbVservers[vserver.Name] = LbVserver{
-			Name:      vserver.Name,
-			IpAddress: vserver.Ipv46,
-			Port:      vserver.Port,
-			Type:      vserver.Type,
+			Name:           vserver.Name,
+			IpAddress:      vserver.Ipv46,
+			Port:           vserver.Port,
+			Type:           vserver.ServiceType,
+			ListenPolicy:   vserver.ListenPolicy,
+			ListenPriority: vserver.ListenPriority,
+			LbMethod:       vserver.LbMethod,
 		}
 	}
 	return lbVservers, nil
