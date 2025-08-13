@@ -95,6 +95,10 @@ func main() {
 			config.LbVserverFieldNames.ListenPriority,
 			config.LbVserverFieldNames.LbMethod,
 		},
+		LbVserverServiceGroupBindingFields: []string{
+			config.LbVserverServiceGroupBindingFieldNames.ServiceGroupName,
+			config.LbVserverServiceGroupBindingFieldNames.Order,
+		},
 	}
 
 	var graph *adcviz.Graph

@@ -1,5 +1,6 @@
 package adcviz
 
 type Config struct {
-	LbVserverFields []string
+	LbVserverFields                    []string
+	LbVserverServiceGroupBindingFields []string
 }

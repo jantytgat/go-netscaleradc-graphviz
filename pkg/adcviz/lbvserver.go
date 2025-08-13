@@ -17,17 +17,19 @@ type LbVserver struct {
 	ListenPolicy   string
 	ListenPriority float64
 	LbMethod       string
+	ServiceGroups  []LbVserverServiceGroupBinding
 }
 
 func (g LbVserver) CreateGraph(gv *graphviz.Graphviz) (*graphviz.Graph, error) {
 	var err error
 
 	var gr *graphviz.Graph
-	if gr, err = gv.Graph(graphviz.WithName("LBV")); err != nil {
+	if gr, err = gv.Graph(graphviz.WithName("cluster_" + g.Name)); err != nil {
 		return nil, err
 	}
 	gr.SetLabel("Load-Balancing Virtual Server")
-	gr.SetBackgroundColor("#FF0000")
+	gr.SetLabelLocation(graphviz.TopLocation)
+	gr.SetCompound(true)
 
 	if err = g.CreateSubGraph(gr); err != nil {
 		return nil, err
@@ -37,34 +39,56 @@ func (g LbVserver) CreateGraph(gv *graphviz.Graphviz) (*graphviz.Graph, error) {
 
 func (g LbVserver) CreateSubGraph(gr *graphviz.Graph) error {
 	var err error
-	var lbv *graphviz.Node
-	if lbv, err = gr.CreateNodeByName(g.Name); err != nil {
-		return err
-	}
-	lbv.SetLabel(g.Name)
-	lbv.SetShape(graphviz.RectangleShape)
-	lbv.SetColor("#0000FF")
+	// var lbv *graphviz.Node
+	// if lbv, err = gr.CreateNodeByName(g.Name); err != nil {
+	// 	return err
+	// }
+	// lbv.SetLabel(g.Name)
+	// lbv.SetShape(graphviz.RectangleShape)
+	// lbv.SetColor("#0000FF")
 
 	var lbvDetailsGraph *graphviz.Graph
-	if lbvDetailsGraph, err = gr.CreateSubGraphByName("clusterDetails"); err != nil {
+	if lbvDetailsGraph, err = gr.CreateSubGraphByName("cluster_" + g.Name + "_details"); err != nil {
 		return err
 	}
 	// defer lbvDetailsGraph.Close()
-	lbvDetailsGraph.SetBackgroundColor("#00FF00")
+	lbvDetailsGraph.SetLabel(g.Name)
+	lbvDetailsGraph.SetCompound(true)
 
 	var lbvDetailsNode *graphviz.Node
-	if lbvDetailsNode, err = lbvDetailsGraph.CreateNodeByName(g.Name + "-details"); err != nil {
+	if lbvDetailsNode, err = lbvDetailsGraph.CreateNodeByName("node_" + g.Name + "_details"); err != nil {
 		return err
 	}
 	lbvDetailsNode.SetShape(graphviz.RectangleShape)
 	lbvDetailsNode.SetLabel(g.Details())
-	lbvDetailsNode.SetColor("#FF0000")
+	lbvDetailsNode.SetColor("#000000")
 
-	// var lbvEdgeLbvDetails *graphviz.Edge
-	// if lbvEdgeLbvDetails, err = gr.CreateEdgeByName("details", lbv, lbvDetailsNode); err != nil {
-	// 	return err
-	// }
-	// lbvEdgeLbvDetails.SetLabel("Details")
+	for _, svg := range g.ServiceGroups {
+		var svgGraph *graphviz.Graph
+		if svgGraph, err = gr.CreateSubGraphByName("cluster_" + svg.ServiceGroupName); err != nil {
+			return err
+		}
+		svgGraph.SetLabel(svg.ServiceGroupName)
+		svgGraph.SetCompound(true)
+
+		if err = svg.CreateSubGraph(svgGraph); err != nil {
+			return err
+		}
+		var svgNode *graphviz.Node
+		if svgNode, err = svgGraph.NodeByName("node_" + svg.ServiceGroupName); err != nil {
+			return err
+		}
+		var edgeGraph *graphviz.Edge
+		if edgeGraph, err = gr.CreateEdgeByName("edge_"+g.Name+"_TO_"+svg.ServiceGroupName, lbvDetailsNode, svgNode); err != nil {
+			return err
+		}
+		edgeGraph.SetColor("#654321")
+		edgeGraph.SetLogicalTail("cluster_" + g.Name + "_details")
+		edgeGraph.SetLogicalHead("cluster_" + svg.ServiceGroupName)
+		edgeGraph.SetArrowHead(graphviz.NoneArrow)
+		edgeGraph.SetLabel(fmt.Sprintf("Order: %d", int(svg.Order)))
+		edgeGraph.SetLabel("\n")
+	}
 	return nil
 }
 

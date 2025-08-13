@@ -3,6 +3,7 @@ package adcviz
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/jantytgat/go-netscaleradc-nitro/pkg/nitro"
 	"github.com/jantytgat/go-netscaleradc-nitro/pkg/nitro/resource/config"
@@ -40,6 +41,17 @@ func generateLbVserverGraph(ctx context.Context, c Config, client *nitro.Client)
 
 	var lbVservers = make(map[string]LbVserver, len(vservers))
 	for _, vserver := range vservers {
+		var lbVserverServiceGroupBindings []config.LbVserverServiceGroupBinding
+		if lbVserverServiceGroupBindings, err = client.LbVserver.GetServiceGroupBindings(ctx, vserver.Name, c.LbVserverServiceGroupBindingFields, nil); err != nil {
+			return nil, err
+		}
+		var servicegroupbindings []LbVserverServiceGroupBinding
+		for _, lbVserverServiceGroupBinding := range lbVserverServiceGroupBindings {
+			servicegroupbindings = append(servicegroupbindings, LbVserverServiceGroupBinding{
+				ServiceGroupName: lbVserverServiceGroupBinding.ServiceGroupName,
+				Order:            lbVserverServiceGroupBinding.Order,
+			})
+		}
 		lbVservers[vserver.Name] = LbVserver{
 			Name:           vserver.Name,
 			IpAddress:      vserver.Ipv46,
@@ -48,7 +60,11 @@ func generateLbVserverGraph(ctx context.Context, c Config, client *nitro.Client)
 			ListenPolicy:   vserver.ListenPolicy,
 			ListenPriority: vserver.ListenPriority,
 			LbMethod:       vserver.LbMethod,
+			ServiceGroups:  servicegroupbindings,
 		}
+		fmt.Println(lbVservers)
+		// time.Sleep(5 * time.Second)
+		break
 	}
 	return lbVservers, nil
 }

@@ -4,7 +4,7 @@ go 1.24.6
 
 require (
 	github.com/goccy/go-graphviz v0.2.9
-	github.com/jantytgat/go-netscaleradc-nitro v0.5.0
+	github.com/jantytgat/go-netscaleradc-nitro v0.5.1-0.20250813192557-2eac10740bc3
 )
 
 require (
