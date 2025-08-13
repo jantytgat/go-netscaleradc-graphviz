@@ -4,84 +4,191 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"log"
+	"strings"
 
 	"github.com/goccy/go-graphviz"
 )
 
 type LbVserver struct {
-	Name      string
-	IpAddress string
-	Port      int
-	Type      string
+	Name           string
+	IpAddress      string
+	Port           int
+	Type           string
+	ListenPolicy   string
+	ListenPriority float64
+	LbMethod       string
 }
 
-func (g LbVserver) Print() string {
+func (g LbVserver) CreateGraph(gv *graphviz.Graphviz) (*graphviz.Graph, error) {
 	var err error
-	var graphv *graphviz.Graphviz
+
+	var gr *graphviz.Graph
+	if gr, err = gv.Graph(graphviz.WithName("LBV")); err != nil {
+		return nil, err
+	}
+	gr.SetLabel("Load-Balancing Virtual Server")
+	gr.SetBackgroundColor("#FF0000")
+
+	if err = g.CreateSubGraph(gr); err != nil {
+		return nil, err
+	}
+	return gr, nil
+}
+
+func (g LbVserver) CreateSubGraph(gr *graphviz.Graph) error {
+	var err error
+	var lbv *graphviz.Node
+	if lbv, err = gr.CreateNodeByName(g.Name); err != nil {
+		return err
+	}
+	lbv.SetLabel(g.Name)
+	lbv.SetShape(graphviz.RectangleShape)
+	lbv.SetColor("#0000FF")
+
+	var lbvDetailsGraph *graphviz.Graph
+	if lbvDetailsGraph, err = gr.CreateSubGraphByName("clusterDetails"); err != nil {
+		return err
+	}
+	// defer lbvDetailsGraph.Close()
+	lbvDetailsGraph.SetBackgroundColor("#00FF00")
+
+	var lbvDetailsNode *graphviz.Node
+	if lbvDetailsNode, err = lbvDetailsGraph.CreateNodeByName(g.Name + "-details"); err != nil {
+		return err
+	}
+	lbvDetailsNode.SetShape(graphviz.RectangleShape)
+	lbvDetailsNode.SetLabel(g.Details())
+	lbvDetailsNode.SetColor("#FF0000")
+
+	// var lbvEdgeLbvDetails *graphviz.Edge
+	// if lbvEdgeLbvDetails, err = gr.CreateEdgeByName("details", lbv, lbvDetailsNode); err != nil {
+	// 	return err
+	// }
+	// lbvEdgeLbvDetails.SetLabel("Details")
+	return nil
+}
+
+func (g LbVserver) Details() string {
+	var sb = new(strings.Builder)
+
+	sb.WriteString(fmt.Sprintf("%s: %s\n", "IP Address", g.IpAddress))
+	sb.WriteString(fmt.Sprintf("%s: %d\n", "Port", g.Port))
+	sb.WriteString(fmt.Sprintf("%s: %s\n", "Type", g.Type))
+	sb.WriteString("\n")
+	sb.WriteString(fmt.Sprintf("%s: %s\n", "Listen Policy", g.ListenPolicy))
+	sb.WriteString(fmt.Sprintf("%s: %d\n", "Listen Priority", int(g.ListenPriority)))
+	sb.WriteString("\n")
+	sb.WriteString(fmt.Sprintf("%s: %s\n", "Method", g.LbMethod))
+	return sb.String()
+}
+
+func (g LbVserver) String() (string, error) {
+	var err error
+	var gv *graphviz.Graphviz
 	ctx := context.Background()
 
-	if graphv, err = graphviz.New(ctx); err != nil {
-		panic(err)
+	if gv, err = graphviz.New(ctx); err != nil {
+		return "", err
 	}
+	defer gv.Close()
 
-	var graph *graphviz.Graph
-	if graph, err = graphv.Graph(); err != nil {
-		panic(err)
+	var gr *graphviz.Graph
+	if gr, err = g.CreateGraph(gv); err != nil {
+		return "", err
 	}
+	defer gr.Close()
 
-	defer func() {
-		var err2 error
-		if err2 = graph.Close(); err2 != nil {
-			panic(err2)
-		}
-		if err2 = graphv.Close(); err2 != nil {
-			panic(err2)
-		}
-	}()
-
-	var lbvs *graphviz.Node
-	if lbvs, err = graph.CreateNodeByName(g.Name); err != nil {
-		panic(err)
-	}
-	fmt.Println("LbVserver:", lbvs.Label())
-
-	var svg *graphviz.Node
-	if svg, err = graph.CreateNodeByName("SVG"); err != nil {
-		panic(err)
-	}
-
-	fmt.Println("SVG:", svg.Label())
-
-	var subnode *graphviz.Node
-	if subnode, err = graph.CreateSubNode(svg); err != nil {
-		panic(err)
-	}
-	subnode.MainSub().SetNode(lbvs)
-	fmt.Println("SubNode:", subnode.Label())
-
-	// m, err := graph.CreateNodeByName("m")
-	// if err != nil { panic(err) }
-	//
-	// e, err := graph.CreateEdgeByName("e", n, m)
-	// if err != nil { panic(err) }
-	// e.SetLabel("e")
-
-	if err = graphv.RenderFilename(ctx, graph, graphviz.PNG, g.Name+".png"); err != nil {
-		panic(err)
+	if err = gv.RenderFilename(ctx, gr, graphviz.PNG, g.Name+".png"); err != nil {
+		return "", err
 	}
 
 	var buf bytes.Buffer
-	if err = graphv.Render(ctx, graph, "dot", &buf); err != nil {
-		log.Fatal(err)
+	if err = gv.Render(ctx, gr, "dot", &buf); err != nil {
+		return "", err
 	}
-	return buf.String()
+	return buf.String(), nil
 }
 
-func (g LbVserver) SaveAsSvg(filename string) error {
+func (g LbVserver) SaveAsDot(filename string) error {
+	var err error
+	var gv *graphviz.Graphviz
+	ctx := context.Background()
+
+	if gv, err = graphviz.New(ctx); err != nil {
+		return err
+	}
+	defer gv.Close()
+
+	var gr *graphviz.Graph
+	if gr, err = g.CreateGraph(gv); err != nil {
+		return err
+	}
+	defer gr.Close()
+
+	return renderToFile(ctx, gv, gr, graphviz.XDOT, filename)
+}
+
+func (g LbVserver) SaveAsJpg(filename string) error {
+	var err error
+	var gv *graphviz.Graphviz
+	ctx := context.Background()
+
+	if gv, err = graphviz.New(ctx); err != nil {
+		return err
+	}
+	defer gv.Close()
+
+	var gr *graphviz.Graph
+	if gr, err = g.CreateGraph(gv); err != nil {
+		return err
+	}
+	defer gr.Close()
+
+	if err = gv.RenderFilename(ctx, gr, graphviz.JPG, filename); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (g LbVserver) SaveAsPng(filename string) error {
+	var err error
+	var gv *graphviz.Graphviz
+	ctx := context.Background()
+
+	if gv, err = graphviz.New(ctx); err != nil {
+		return err
+	}
+	defer gv.Close()
+
+	var gr *graphviz.Graph
+	if gr, err = g.CreateGraph(gv); err != nil {
+		return err
+	}
+	defer gr.Close()
+
+	if err = gv.RenderFilename(ctx, gr, graphviz.PNG, filename); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func (g LbVserver) SaveAsSvg(filename string) error {
+	var err error
+	var gv *graphviz.Graphviz
+	ctx := context.Background()
+
+	if gv, err = graphviz.New(ctx); err != nil {
+		return err
+	}
+	defer gv.Close()
+
+	var gr *graphviz.Graph
+	if gr, err = g.CreateGraph(gv); err != nil {
+		return err
+	}
+	defer gr.Close()
+
+	return renderToFile(ctx, gv, gr, graphviz.SVG, filename)
 }
